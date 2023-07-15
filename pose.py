@@ -41,6 +41,66 @@ pose_indices = {
     "right_foot_index": 32,
 }
 
+semaphore_letters = {
+    0: " ",
+    1: "A",
+    2: "B",
+    3: "C",
+    4: "D",
+    5: "E",
+    6: "F",
+    7: "G",
+    8: "H",
+    9: "I",
+    10: "J",
+    11: "K",
+    12: "L",
+    13: "M",
+    14: "N",
+    15: "O",
+    16: "P",
+    17: "Q",
+    18: "R",
+    19: "S",
+    20: "T",
+    21: "U",
+    22: "V",
+    23: "W",
+    24: "X",
+    25: "Y",
+    26: "Z"
+}
+semaphore_numbers = {
+    "_" : 0,
+    "A" : 1,
+    "B" : 2,
+    "C" : 3,
+    "D" : 4,
+    "E" : 5,
+    "F" : 6,
+    "G" : 7,
+    "H" : 8,
+    "I" : 9,
+    "J" : 10,
+    "K" : 11,
+    "L" : 12,
+    "M" : 13,
+    "N" : 14,
+    "O" : 15,
+    "P" : 16,
+    "Q" : 17,
+    "R" : 18,
+    "S" : 19,
+    "T" : 20,
+    "U" : 21,
+    "V" : 22,
+    "W" : 23,
+    "X" : 24,
+    "Y" : 25,
+    "Z" : 26
+}
+
+
 class Pose():
     """
     A class to process and store each frame's pose information
@@ -63,6 +123,7 @@ class Pose():
         self._pose_landmarks = None
         self._frame = None
         self._key_points = {}
+        self._success = False
 
     def compute_frame(self,frame):
         """ 
@@ -70,9 +131,18 @@ class Pose():
         
         """
         self._frame = frame
-        self._results = self.pose.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        self._shape = frame.shape
+        
+        self._results = self.pose.process(frame)#cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        
         self._pose_landmarks = self._results.pose_landmarks
-        self._key_points = self.get_keypoints(self._results)
+        if self._results.pose_landmarks is None:
+            self._success = False
+        else:
+            self._success = True
+            self._key_points = self.get_keypoints(self._results)
+
+        return self._success
 
     def get_keypoints(self, results):
         """
@@ -107,17 +177,41 @@ class Pose():
         """ access the keypoint by a string name """
         return self._key_points[pose_indices[str_point]]
 
-    def show_pose_landmarks(self):
-        """ plot the pose landmarks on the original frame and pause here """
+    def show_pose_landmarks(self, show_background : bool):
+        """ 
+        plot the pose landmarks on the original frame and pause here
+        you can choose whether to show the original image with show_background
+        """
         fr = self._frame
+        if not show_background:
+            fr = np.zeros_like(fr)
         self.mp_draw.draw_landmarks(
          fr,
          self._pose_landmarks,
          self.mp_pose.POSE_CONNECTIONS,
          landmark_drawing_spec=self.mp_drawing_styles.get_default_pose_landmarks_style())
-        cv2.imshow("frame",fr)
-        cv2.waitKey(0)
+        return fr
+    def draw_labelled_box(self,fr, label : str):
+        """
+        This function takes the input image WHICH IS ASSUMED TO BE A MODIFIED VERSION OF 
+        FRAME and draws a bounding box on the person. It also adds text to the image 
+        which is probably the predicted pose position. The modified frame is returned 
+        """
+        x1,x2,y1,y2 = self.person_bounding_box()
+        #print(x1,y1,x2,y2)
+        fr = cv2.rectangle(fr, (x1, y1), (x2,y2), (36,255,12), 1)
+        cv2.putText(fr, label, (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
+        return fr
     
+    def draw_label(self, frame, label : str):
+        """
+        This adds text of the classifier to the top of the image
+        """
+        size_y = self._shape[1]
+        size_x = self._shape[0]
+        cv2.putText(frame, label, (size_x // 2 + 30, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36,255,12), 2)
+        return frame
+
     def return_keypoint_vector(self):
         """
         This function outputs the key datapoints for the use of the semaphore 
@@ -130,11 +224,21 @@ class Pose():
 
         ret_vector = []
         missing_pts = 0
+        # find 0,0:
+        x_mean = 0
+        y_mean = 0
         for i in points_to_use:
             if self.kp_i_in_keypoints(i):
                 pt = self._key_points[i]
-                ret_vector.append(pt.x)
-                ret_vector.append(pt.y)
+                x_mean += pt.x
+                y_mean += pt.y
+        x_mean = x_mean/19.0
+        y_mean = y_mean/19.0
+        for i in points_to_use:
+            if self.kp_i_in_keypoints(i):
+                pt = self._key_points[i]
+                ret_vector.append(pt.x - x_mean)
+                ret_vector.append(pt.y - y_mean)
             else: # the point is off screen
                 ret_vector.append(0)
                 ret_vector.append(0)
@@ -155,6 +259,35 @@ class Pose():
             return np.stack((self._results.segmentation_mask,) * 3, axis=-1) > 0.2
         else:
             return None
+        
+    def person_bounding_box(self):
+        """
+        calculates the bounding box from the points we will use
+        """
+        points_to_use = [24,23,         # lower torso 
+                        11,13,15,19,17, # left arm (person's perspective)
+                        12,14,16,20,18, # right arm
+                        0,10,9,5,2,8,7] # subset of face keypoints
+
+        xmin = 100
+        xmax = -100
+        ymin = 100
+        ymax = -100
+
+        for i in points_to_use:
+            if self.kp_i_in_keypoints(i):
+                pt = self._key_points[i]
+                xmin = min(xmin,pt.x)
+                xmax = max(xmax,pt.x)
+                ymin = min(ymin,pt.y)
+                ymax = max(ymax,pt.y)
+
+        xmin = int(xmin*self._shape[1])
+        xmax = int(xmax*self._shape[1])
+        ymin = int(ymin*self._shape[0])
+        ymax = int(ymax*self._shape[0])
+
+        return xmin, xmax, ymin, ymax
 
     def return_person_canny(self):
         """ This is just for fun - and puts a canny filter on the person in the frame """
