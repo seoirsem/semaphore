@@ -11,7 +11,12 @@ import cv2
 from train_network import Model
 from pose import Pose, semaphore_letters
 
-def return_processed_frame(frame, pose, landmarks : bool, bounding_box : bool, show_background):
+"""
+This script plays from the camera or a video file and classifies the poses it sees
+"""
+
+
+def return_processed_frame(frame, pose, landmarks : bool, bounding_box : bool, show_background, model):
     """
     This function processes the frame and returns it adorned with the requested box or landmarks
     """
@@ -36,39 +41,49 @@ def return_processed_frame(frame, pose, landmarks : bool, bounding_box : bool, s
 
     return frame, pose
 
-pose = Pose()
-model = Model(38, 60, 27)
-model_path = "train_semaphore.pt"
 
-testfile = "data/25/1.png"
-testfile = "data/flag_guy.png"
+def main():
 
-if exists(model_path):
-    checkpoint = torch.load(model_path)
-    model.load_state_dict(checkpoint['model_state_dict'])
-    print('Loaded model at ' + model_path)
-    model.eval()
-else:
-    ValueError("No classifier model was found at {}".format(model_path))
+    pose = Pose(complexity=1) ###### nb complexity makes a difference to fidelity
+    model = Model(38, 60, 27)
+    model_path = "train_semaphore.pt"
 
-camera = cv2.VideoCapture(0)
+    testfile = "data/25/1.png"
+    testfile = "data/flag_guy.png"
 
-video_path = "data/navy_morse_video.mp4"
-#camera = cv2.VideoCapture(video_path)
+    if exists(model_path):
+        checkpoint = torch.load(model_path)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        print('Loaded model at ' + model_path)
+        model.eval()
+    else:
+        ValueError("No classifier model was found at {}".format(model_path))
 
-landmarks = True
-bounding_box= False
-show_background = False
+    camera = cv2.VideoCapture(0)
 
-wait = 0
-while camera.isOpened():
-    # if wait < 10:
-    #     wait += 1
-    #     continue
-    success, frame = camera.read()
-    if success:
-        frame, pose = return_processed_frame(frame, pose, landmarks, bounding_box, show_background)
-        cv2.imshow("pose landmarks", frame)
-        #time.sleep(0.5)
-    if cv2.waitKey(1) & 0xFF == ord('e'):
-        break
+    video_path = "data/navy_morse_video.mp4"
+    #video_path = "data/alphabet_room.mp4"
+    video_path = "data/man_room.mp4"
+    #camera = cv2.VideoCapture(video_path)
+
+    landmarks = True
+    bounding_box= False
+    show_background = False
+
+    wait = 0
+    while camera.isOpened():
+        success, frame = camera.read()
+        if success:
+            frame1, pose = return_processed_frame(frame, pose, True, False, False, model)
+            frame2, pose = return_processed_frame(frame, pose, False, True, True, model)
+            x = 1
+            frame1 = cv2.resize(frame1,(int(frame1.shape[1]//x),int(frame1.shape[0]//x)))
+            frame2 = cv2.resize(frame2,(int(frame2.shape[1]//x),int(frame2.shape[0]//x)))
+            cv2.imshow("pose landmarks", frame1)
+            cv2.imshow("pose landmarks2", frame2)
+            #time.sleep(0.5)
+        if cv2.waitKey(1) & 0xFF == ord('e'):
+            break
+
+if __name__ == "__main__":
+    main()

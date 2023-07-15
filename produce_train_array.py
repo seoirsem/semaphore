@@ -2,7 +2,7 @@ import pandas as pd
 import glob
 import cv2
 from pose import Pose, semaphore_numbers
-
+import time
 """
 This file loads the given images, and extracts the keypoints using the Pose class
 These and their labels are saved as csvs for saving or testing
@@ -55,11 +55,13 @@ def return_real_data_hand_labelled(path : str):
     """
     filepaths = glob.glob("{}/*.png".format(path))
     count = len(filepaths)
-    pose = Pose()
+    pose1 = Pose(complexity=1)# for the sake of memory you want a single pose
+                              # object per array shape
+    pose2 = Pose(complexity=1)
     df = pd.DataFrame(columns=range(38),index=range(count))
     labels = pd.DataFrame(columns=range(27), index=range(count))
     ct = 0
-
+    t1 = time.time()
     for j,f in enumerate(filepaths):
         label = [0]*27
         f_rev = f[::-1]
@@ -67,10 +69,17 @@ def return_real_data_hand_labelled(path : str):
         idx = semaphore_numbers[c]
         label[idx] = 1
         frame = cv2.imread(f)
-        pose.compute_frame(frame)
-        df.loc[ct] = pose.return_keypoint_vector()[1]
+        if frame.shape == (480,844,3):
+            pose1.compute_frame(frame)
+            df.loc[ct] = pose1.return_keypoint_vector()[1]
+        else:
+            pose2.compute_frame(frame)
+            df.loc[ct] = pose2.return_keypoint_vector()[1]
         labels.loc[ct] = label
         ct += 1
+        if (j+1) % 20 == 0:
+            print("[{}/{}] images processed in {:.1f}s".format(j+1,count,(time.time()-t1)))
+            t1 = time.time()
     return df, labels
 
 def load_data(data_file : str, label_file : str):
@@ -105,6 +114,7 @@ if hand_labelled:
     data_path = "data_labelled.csv"
     label_path = "labels_labelled.csv"
     save_data(data_path, label_path, df, labels)
+
 
 if first_dataset:
 

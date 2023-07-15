@@ -1,5 +1,11 @@
 import cv2
 from os import listdir
+from pose import Pose
+from process_poses import return_processed_frame
+import os
+import glob
+from train_network import Model
+import torch
 
 """
 This is a simple helper function to allow me to extract
@@ -14,6 +20,13 @@ HOW TO USE:
     if you press "a" to save the file, it goes to A3
 - To skip frames with no semaphore, hit e.g. any arrow key
 - The program will end when the frames are exhausted
+
+TO DELETE FRAMES:
+- run "delete_files"
+- arrow keys to scroll through the frames
+- "d" to delete the current frame
+- be careful with this as pose data carries frame to frame
+  and is meant to be a video
 """
 
 # dictionary of relevant character encodings:
@@ -60,18 +73,76 @@ def save_frame(frame, label : str, folder : str):
             print("Saved file as '{}'".format(name))
             break
     
+def delete_files(out_folder):
+    """
+    you shouldnt use this!
+    the pose data carries from frame to frame and so is inconsistent
+    """
+    filepaths = glob.glob("{}/*.png".format(out_folder))
+    pose1 = Pose(complexity=2)
+    pose2 = Pose(complexity=2)
+    i = 0
+    model_path = "train_semaphore.pt"
+    model = Model(38, 60, 27)
+    if os.path.exists(model_path):
+        checkpoint = torch.load(model_path)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        print('Loaded model at ' + model_path)
+        model.eval()
+    else:
+        ValueError("No classifier model was found at {}".format(model_path))
+
+    while i < len(filepaths):
+        f = filepaths[i]
+        print(f)
+        frame = cv2.imread(f)
+        if frame is None:
+            pass
+        else:
+            if frame.shape == (480,844,3):
+                frame1, pose = return_processed_frame(frame, pose1, True, False, False, model)
+                frame2, pose = return_processed_frame(frame, pose1, False, True, True, model)
+            else:
+                frame1, pose = return_processed_frame(frame, pose2, True, False, False, model)
+                frame2, pose = return_processed_frame(frame, pose2, False, True, True, model)
+            frame1 = cv2.resize(frame1,(int(844/1.5),int(480/1.5)))
+            frame2 = cv2.resize(frame2,(int(844/1.5),int(480/1.5)))
+            cv2.imshow("pose landmarks", frame1)
+            cv2.imshow("pose landmarks2", frame2)
+        out = cv2.waitKey(0)
+        if out == 27:
+            break
+        elif out == 49:
+            i += 1 #"1"
+        elif out == 50:
+            i -= 1 #"2"
+            if i<0:
+                i = 0
+        elif out == 100 and frame is not None: # "d"
+            os.remove(f)
+            print("deleted " + f)
+        else:
+            continue
+            
+
 
 def main():
-
+    read = True
     out_folder = "data/hand_labelled/"
+
+    # if read == False:
+    #     print("here")
+    #     delete_files(out_folder)
+    # else:
+    print("there")
     video_path = "data/navy_morse_video.mp4"
+    video_path = "data/alphabet_room.mp4"
 
     camera = cv2.VideoCapture(video_path)
-
     wait = 0
     while camera.isOpened():
-
         success, frame = camera.read()
+
 
         if success:
 

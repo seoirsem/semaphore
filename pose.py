@@ -42,7 +42,7 @@ pose_indices = {
 }
 
 semaphore_letters = {
-    0: " ",
+    0: "_",
     1: "A",
     2: "B",
     3: "C",
@@ -107,14 +107,14 @@ class Pose():
     This class will not have any responsability for the temporal aspects of the
     video feed 
      """
-    def __init__(self):
+    def __init__(self, complexity=1):
         # Create utils:
         self.mp_pose = mp.solutions.pose
         self.mp_draw = mp.solutions.drawing_utils
         self.mp_drawing_styles = mp.solutions.drawing_styles
         self.pose = self.mp_pose.Pose(
             static_image_mode = False,
-            model_complexity = 1, #either 0,1,2, 2 is best and we chooses it for a static image (no framerate issues)
+            model_complexity = complexity, #either 0,1,2, 2 is best and we chooses it for a static image (no framerate issues)
             enable_segmentation = True,#to see where the person is
             min_detection_confidence = 0.5)
         
@@ -124,6 +124,15 @@ class Pose():
         self._frame = None
         self._key_points = {}
         self._success = False
+    def reinitilise(self, complexity):
+        self.mp_pose = mp.solutions.pose
+        self.mp_draw = mp.solutions.drawing_utils
+        self.mp_drawing_styles = mp.solutions.drawing_styles
+        self.pose = self.mp_pose.Pose(
+            static_image_mode = False,
+            model_complexity = complexity, #either 0,1,2, 2 is best and we chooses it for a static image (no framerate issues)
+            enable_segmentation = True,#to see where the person is
+            min_detection_confidence = 0.5)
 
     def compute_frame(self,frame):
         """ 
@@ -132,9 +141,8 @@ class Pose():
         """
         self._frame = frame
         self._shape = frame.shape
-        
         self._results = self.pose.process(frame)#cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        
+
         self._pose_landmarks = self._results.pose_landmarks
         if self._results.pose_landmarks is None:
             self._success = False
