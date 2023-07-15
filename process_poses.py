@@ -48,9 +48,6 @@ def main():
     model = Model(38, 60, 27)
     model_path = "train_semaphore.pt"
 
-    testfile = "data/25/1.png"
-    testfile = "data/flag_guy.png"
-
     if exists(model_path):
         checkpoint = torch.load(model_path)
         model.load_state_dict(checkpoint['model_state_dict'])
@@ -59,12 +56,14 @@ def main():
     else:
         ValueError("No classifier model was found at {}".format(model_path))
 
-    camera = cv2.VideoCapture(0)
+#    camera = cv2.VideoCapture(0)
 
     video_path = "data/navy_morse_video.mp4"
     #video_path = "data/alphabet_room.mp4"
     video_path = "data/man_room.mp4"
-    #camera = cv2.VideoCapture(video_path)
+    video_path = "data/messages.mp4"
+
+    camera = cv2.VideoCapture(video_path)
 
     landmarks = True
     bounding_box= False

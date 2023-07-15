@@ -103,13 +103,27 @@ def train_model(load_model : bool, model_path : str, epochs : int, model, datalo
 
     return model, optimiser, test_correct, test_top_two, losses, test_losses
 
-def main():
-    
+def load_data_arrays(device):
     data_file = "data.csv"
     label_file = "labels.csv"
     data_file_2 = "data_labelled.csv"
     label_file_2 = "labels_labelled.csv"
-    model_path = "train_semaphore.pt"
+    data, labels = load_data(data_file, label_file, device)
+    data_2, labels_2 = load_data(data_file_2, label_file_2, device)
+    data = torch.concat((data,data_2))
+    labels = torch.concat((labels,labels_2))
+    print("The data has shape {}, and the labels have shape {}".format(data.shape, labels.shape))
+    return data, labels
+
+def load_synthetic_data(device):
+    data_file = "d_syn.csv"
+    label_file = "l_syn.csv"
+    return load_data(data_file, label_file, device)
+
+def main():
+    
+
+    model_path = "train_semaphore_syn.pt"
 
     TEST_TRAIN_PROPORTION = 0.25
     SEED = 999
@@ -122,12 +136,9 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using {device} device")
 
+    #data, labels = load_data_arrays(device)
+    data, labels = load_synthetic_data(device)
 
-    data, labels = load_data(data_file, label_file, device)
-    data_2, labels_2 = load_data(data_file_2, label_file_2, device)
-    data = torch.concat((data,data_2))
-    labels = torch.concat((labels,labels_2))
-    print("The data has shape {}, and the labels have shape {}".format(data.shape, labels.shape))
     train_data, train_labels, test_data, test_labels = test_train_split(data, labels, SEED, TEST_TRAIN_PROPORTION)
 
     model = Model(38, 60, 27)
