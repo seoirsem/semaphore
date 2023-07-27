@@ -17,7 +17,7 @@ def run_test_set_by_label(test_data: torch.tensor, test_labels: torch.tensor, mo
     count_corr = [0] * 27
     count_top_2 = [0] * 27
     for i in range(n):
-        top_values, top_indices = torch.topk(pred[i], 2)
+        _, top_indices = torch.topk(pred[i], 2)
         label = torch.argmax(test_labels[i])
         count[label] += 1
         count_corr[label] += int(top_indices[0] == label)
