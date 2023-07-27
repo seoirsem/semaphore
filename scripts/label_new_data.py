@@ -31,7 +31,7 @@ TO DELETE FRAMES:
 
 # dictionary of relevant character encodings:
 semaphore_letters = {
-    32: "_", # we call space underscore so the filename makes sense
+    32: "_",  # we call space underscore so the filename makes sense
     97: "A",
     98: "B",
     99: "C",
@@ -58,21 +58,23 @@ semaphore_letters = {
     120: "X",
     121: "Y",
     122: "Z",
-    27: "esc"
+    27: "esc",
 }
 
-def save_frame(frame, label : str, folder : str):
+
+def save_frame(frame, label: str, folder: str):
     files = listdir(folder)
     i = 1
     while True:
-        if (label + str(i) + '.png') in files:
+        if (label + str(i) + ".png") in files:
             i += 1
         else:
-            name = folder + label + str(i) + '.png'
-            cv2.imwrite(name,frame)
+            name = folder + label + str(i) + ".png"
+            cv2.imwrite(name, frame)
             print("Saved file as '{}'".format(name))
             break
-    
+
+
 def delete_files(out_folder):
     """
     you shouldnt use this!
@@ -86,8 +88,8 @@ def delete_files(out_folder):
     model = Model(38, 60, 27)
     if os.path.exists(model_path):
         checkpoint = torch.load(model_path)
-        model.load_state_dict(checkpoint['model_state_dict'])
-        print('Loaded model at ' + model_path)
+        model.load_state_dict(checkpoint["model_state_dict"])
+        print("Loaded model at " + model_path)
         model.eval()
     else:
         ValueError("No classifier model was found at {}".format(model_path))
@@ -99,59 +101,61 @@ def delete_files(out_folder):
         if frame is None:
             pass
         else:
-            if frame.shape == (480,844,3):
-                frame1, pose = return_processed_frame(frame, pose1, True, False, False, model)
-                frame2, pose = return_processed_frame(frame, pose1, False, True, True, model)
+            if frame.shape == (480, 844, 3):
+                frame1, pose = return_processed_frame(
+                    frame, pose1, True, False, False, model
+                )
+                frame2, pose = return_processed_frame(
+                    frame, pose1, False, True, True, model
+                )
             else:
-                frame1, pose = return_processed_frame(frame, pose2, True, False, False, model)
-                frame2, pose = return_processed_frame(frame, pose2, False, True, True, model)
-            frame1 = cv2.resize(frame1,(int(844/1.5),int(480/1.5)))
-            frame2 = cv2.resize(frame2,(int(844/1.5),int(480/1.5)))
+                frame1, pose = return_processed_frame(
+                    frame, pose2, True, False, False, model
+                )
+                frame2, pose = return_processed_frame(
+                    frame, pose2, False, True, True, model
+                )
+            frame1 = cv2.resize(frame1, (int(844 / 1.5), int(480 / 1.5)))
+            frame2 = cv2.resize(frame2, (int(844 / 1.5), int(480 / 1.5)))
             cv2.imshow("pose landmarks", frame1)
             cv2.imshow("pose landmarks2", frame2)
         out = cv2.waitKey(0)
         if out == 27:
             break
         elif out == 49:
-            i += 1 #"1"
+            i += 1  # "1"
         elif out == 50:
-            i -= 1 #"2"
-            if i<0:
+            i -= 1  # "2"
+            if i < 0:
                 i = 0
-        elif out == 100 and frame is not None: # "d"
+        elif out == 100 and frame is not None:  # "d"
             os.remove(f)
             print("deleted " + f)
         else:
             continue
-            
 
 
 def main():
-    read = True
+    """
+    Flick through video frames and label some of them
+    """
     out_folder = "data/hand_labelled/"
 
-    # if read == False:
-    #     print("here")
-    #     delete_files(out_folder)
-    # else:
     print("there")
     video_path = "data/navy_morse_video.mp4"
     video_path = "data/alphabet_room.mp4"
 
     camera = cv2.VideoCapture(video_path)
-    wait = 0
     while camera.isOpened():
         success, frame = camera.read()
 
-
         if success:
-
-            cv2.imshow("feed",frame)        
+            cv2.imshow("feed", frame)
             out = cv2.waitKey(0)
             if out == 27:
                 break
             elif out in semaphore_letters:
-                save_frame(frame,semaphore_letters[out],out_folder)
+                save_frame(frame, semaphore_letters[out], out_folder)
 
         else:
             break
@@ -159,5 +163,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-    
