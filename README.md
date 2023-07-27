@@ -27,6 +27,6 @@ The file process_poses.py will load a pretrained model (train_semaphore.pt) and 
 
 # Examples
 
-![[Images/seoirse_hello.gif]]
+![[Hello](https://github.com/seoirsem/semaphore/blob/main/Images/charlotte_world.gif)
 
-![[Images/charlotte_world.gif]]
+![[World](https://github.com/seoirsem/semaphore/blob/main/Images/seoirse_hello.gif)
